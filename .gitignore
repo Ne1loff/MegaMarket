@@ -35,3 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+src/main/resources/openapi.yaml
+src/main/resources/Task.md
+src/main/resources/unit_test.py
