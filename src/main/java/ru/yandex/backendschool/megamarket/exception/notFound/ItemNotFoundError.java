@@ -1,13 +1,8 @@
 package ru.yandex.backendschool.megamarket.exception.notFound;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
-
-@PropertySource("classpath:exceptionMessages.properties")
 public class ItemNotFoundError extends NotFoundException {
 
-    @Value("${error.validationErrorMessage}")
-    private static String message;
+    private static String message = "Item not found";
 
     public ItemNotFoundError() {
         super(message);

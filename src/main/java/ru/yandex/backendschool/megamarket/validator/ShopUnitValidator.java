@@ -6,7 +6,9 @@ import java.util.Date;
 
 public interface ShopUnitValidator {
 
+    boolean isInvalidUuid(String uuid);
+
     void validateShopUnitImport(ShopUnitImport unitImport);
 
-    Date validateShopUnitImportRequestDateAndGet(String dateString);
+    Date validateDateAndGet(String dateString);
 }

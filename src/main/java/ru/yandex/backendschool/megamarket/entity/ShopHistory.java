@@ -1,15 +1,13 @@
-/* TODO: Thing about it.
 package ru.yandex.backendschool.megamarket.entity;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.Hibernate;
 import ru.yandex.backendschool.megamarket.dataEnum.ShopUnitType;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.validation.constraints.NotNull;
+import javax.persistence.*;
 import java.util.Date;
 import java.util.Objects;
 
@@ -24,20 +22,23 @@ public class ShopHistory {
     @GeneratedValue(strategy = GenerationType.AUTO)
     Long id;
 
-    @NotNull
+    @Column(nullable = false)
     String shopUnitId;
 
-    @NotNull
+    @Column(nullable = false)
+    String name;
+
+    @Column(nullable = false)
     Date date;
 
     String parentId;
 
-    @NotNull
+    @Column(nullable = false)
     ShopUnitType type;
 
     Long price;
 
-    @NotNull
+    @Column(nullable = false)
     Boolean isDeleted;
 
     @Override
@@ -53,5 +54,3 @@ public class ShopHistory {
         return getClass().hashCode();
     }
 }
-
-*/

@@ -1,12 +1,13 @@
 package ru.yandex.backendschool.megamarket.exception;
 
-import javax.validation.constraints.NotNull;
+import lombok.Getter;
 
+@Getter
 public class Error {
     Integer status;
     String message;
 
-    public Error(@NotNull Integer status, @NotNull String message) {
+    public Error(Integer status, String message) {
         this.status = status;
         this.message = message;
     }

@@ -1,13 +1,8 @@
 package ru.yandex.backendschool.megamarket.exception.badRequest;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
-
-@PropertySource("classpath:exceptionMessages.properties")
 public class ValidationError extends BadRequestException {
 
-    @Value("${error.validationErrorMessage}")
-    private static String message;
+    private static final String message = "Validation Failed";
 
     public ValidationError() {
         super(message);

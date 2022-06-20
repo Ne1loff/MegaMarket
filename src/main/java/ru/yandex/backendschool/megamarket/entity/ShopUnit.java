@@ -1,12 +1,16 @@
 package ru.yandex.backendschool.megamarket.entity;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.Hibernate;
-import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.*;
 import ru.yandex.backendschool.megamarket.dataEnum.ShopUnitType;
 
 import javax.persistence.*;
-import javax.validation.constraints.NotNull;
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -18,14 +22,17 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class ShopUnit {
 
-    public ShopUnit(String id,
-                    String name,
-                    Date date,
-                    String parentId,
-                    ShopUnitType type,
-                    Long price,
-                    ShopUnit parent,
-                    List<ShopUnit> children
+    public ShopUnit(
+            String id,
+            String name,
+            Date date,
+            String parentId,
+            ShopUnitType type,
+            Long price,
+            String rootId,
+            Long sumOfChildrenPrice,
+            Long totalChildrenOfferCount,
+            List<ShopUnit> children
     ) {
         this.id = id;
         this.name = name;
@@ -33,33 +40,36 @@ public class ShopUnit {
         this.parentId = parentId;
         this.type = type;
         this.price = price;
-        this.parent = parent;
+        this.rootId = rootId;
+        this.sumOfChildrenPrice = sumOfChildrenPrice;
+        this.totalChildrenOfferCount = totalChildrenOfferCount;
         this.children = children;
     }
 
     @Id
-    @GeneratedValue(generator = "uuid2")
-    @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
     String id;
 
-    @NotNull
     String name;
 
-    @NotNull
     Date date;
 
+    @Column(name = "pid")
     String parentId;
 
-    @NotNull
     ShopUnitType type;
 
     Long price;
 
-    @ManyToOne()
-    ShopUnit parent;
+    String rootId;
 
-    @OneToMany(mappedBy = "parent", fetch = FetchType.LAZY, cascade = CascadeType.DETACH)
+    Long sumOfChildrenPrice;
+
+    Long totalChildrenOfferCount;
+
     @ToString.Exclude
+    @BatchSize(size = 10)
+    @NotFound(action = NotFoundAction.IGNORE)
+    @OneToMany(mappedBy = "parentId", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.REFRESH})
     List<ShopUnit> children;
 
     @Override

@@ -10,17 +10,17 @@ import ru.yandex.backendschool.megamarket.exception.notFound.NotFoundException;
 @ControllerAdvice
 public class ApiExceptionHandler {
 
-    @ExceptionHandler
-    ResponseEntity<Error> handleNotFoundException(NotFoundException exception) {
+    @ExceptionHandler(value = {NotFoundException.class})
+    ResponseEntity<Object> handleNotFoundException(NotFoundException exception) {
         HttpStatus status = HttpStatus.NOT_FOUND;
         Error error = new Error(status.value(), exception.getMessage());
-        return new ResponseEntity<>(error, status);
+        return ResponseEntity.status(status).body(error);
     }
 
-    @ExceptionHandler
-    ResponseEntity<Error> handleBadRequestException(BadRequestException exception) {
+    @ExceptionHandler(value = {BadRequestException.class})
+    ResponseEntity<Object> handleBadRequestException(BadRequestException exception) {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         Error error = new Error(status.value(), exception.getMessage());
-        return new ResponseEntity<>(error, status);
+        return ResponseEntity.status(status).body(error);
     }
 }

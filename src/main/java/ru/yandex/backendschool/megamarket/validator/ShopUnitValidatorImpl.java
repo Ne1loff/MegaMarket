@@ -14,12 +14,17 @@ import java.util.regex.Pattern;
 @Component(value = "ValidatorImpl")
 public class ShopUnitValidatorImpl implements ShopUnitValidator {
 
-    private boolean isInvalidUuid(String uuid) {
-        Pattern pattern = Pattern.compile("/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i");
-        return !pattern.matcher(uuid).matches();
+    @Override
+    public boolean isInvalidUuid(String uuid) {
+        if (uuid == null) return true;
+        var regex = "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$";
+        return !Pattern.matches(regex, uuid);
     }
 
-    private Date validateDateAndGet(String dateString) {
+    @Override
+    public Date validateDateAndGet(String dateString) {
+        if (dateString == null) throw new ValidationError();
+
         DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
         try {
             return Date.from(Instant.from(formatter.parse(dateString)));
@@ -29,18 +34,20 @@ public class ShopUnitValidatorImpl implements ShopUnitValidator {
 
     }
 
+
     @Override
     public void validateShopUnitImport(ShopUnitImport unitImport) {
+
+        if (unitImport.getId() == null ||
+                unitImport.getName() == null ||
+                unitImport.getType() == null
+        ) throw new ValidationError();
+
         if (isInvalidUuid(unitImport.getId())) throw new ValidationError();
-        if (isInvalidUuid(unitImport.getParentId())) throw new ValidationError();
+        if (unitImport.getParentId() != null && isInvalidUuid(unitImport.getParentId())) throw new ValidationError();
 
         if (unitImport.getType() == ShopUnitType.CATEGORY && unitImport.getPrice() != null) throw new ValidationError();
         if (unitImport.getType() == ShopUnitType.OFFER && unitImport.getPrice() == null) throw new ValidationError();
-    }
-
-    @Override
-    public Date validateShopUnitImportRequestDateAndGet(String dateString) {
-        return validateDateAndGet(dateString);
     }
 
 }

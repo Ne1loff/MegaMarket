@@ -1,27 +1,31 @@
 package ru.yandex.backendschool.megamarket.dto;
 
-import lombok.Data;
+import lombok.Getter;
 import ru.yandex.backendschool.megamarket.dataEnum.ShopUnitType;
 
-import javax.validation.constraints.NotNull;
 import java.util.Date;
 
-@Data
+@Getter
 public class ShopUnitStatisticUnit {
 
-    @NotNull
-    String id;
+    private final String id;
 
-    @NotNull
-    String name;
+    private final String name;
 
-    String parentId;
+    private final String parentId;
 
-    @NotNull
-    ShopUnitType type;
+    private final ShopUnitType type;
 
-    Long price;
+    private final Long price;
 
-    @NotNull
-    Date date;
+    private final Date date;
+
+    public ShopUnitStatisticUnit(String id, String name, String parentId, ShopUnitType type, Long price, Date date) {
+        this.id = id;
+        this.name = name;
+        this.parentId = parentId;
+        this.type = type;
+        this.price = price;
+        this.date = date;
+    }
 }
