@@ -8,26 +8,27 @@ import ru.yandex.backendschool.megamarket.dto.ShopUnitStatisticUnit;
 import ru.yandex.backendschool.megamarket.entity.ShopHistory;
 import ru.yandex.backendschool.megamarket.entity.ShopUnit;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
 
 @Component(value = "MapperImpl")
 public class ShopUnitMapperImpl implements ShopUnitMapper {
     @Override
-    public ShopUnit mapToShopUnit(ShopUnitImport unitImport, Date date) {
-        boolean unitIsOffer = unitImport.getType() == ShopUnitType.OFFER;
+    public ShopUnit mapToShopUnit(ShopUnitImport unitImport, ZonedDateTime date) {
+        boolean unitIsOffer = unitImport.type() == ShopUnitType.OFFER;
 
         return new ShopUnit(
-                unitImport.getId(),
-                unitImport.getName(),
+                unitImport.id(),
+                unitImport.name(),
                 date,
-                unitImport.getParentId(),
-                unitImport.getType(),
-                unitImport.getPrice(),
-                unitImport.getParentId() == null ?
-                        unitImport.getId() : "",
-                unitIsOffer ? unitImport.getPrice() : 0L,
+                unitImport.parentId(),
+                unitImport.type(),
+                unitImport.price(),
+                unitImport.parentId() == null ?
+                        unitImport.id() : "",
+                unitIsOffer ? unitImport.price() : 0L,
                 unitIsOffer ? 1L : 0L,
                 unitIsOffer ? null : new ArrayList<>()
         );
@@ -37,15 +38,31 @@ public class ShopUnitMapperImpl implements ShopUnitMapper {
     public ShopUnitDto mapToShopUnitDto(ShopUnit unit) {
         if (unit == null) return null;
         var isOffer = unit.getType() == ShopUnitType.OFFER;
+
+        var dateString = unit.getDate().withZoneSameInstant(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSVV"));
+
         return new ShopUnitDto(
                 unit.getId(),
                 unit.getName(),
-                unit.getDate(),
+                dateString,
                 unit.getParentId(),
                 unit.getType(),
                 unit.getPrice(),
                 isOffer ? null : unit.getChildren()
                         .stream().map(this::mapToShopUnitDto).toList()
+        );
+    }
+
+    @Override
+    public ShopHistory mapToShopHistory(ShopUnit unit) {
+        return new ShopHistory(
+                unit.getId(),
+                unit.getName(),
+                unit.getDate(),
+                unit.getParentId(),
+                unit.getType(),
+                unit.getPrice()
         );
     }
 

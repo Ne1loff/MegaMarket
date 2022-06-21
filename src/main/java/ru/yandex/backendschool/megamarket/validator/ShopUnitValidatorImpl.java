@@ -5,10 +5,9 @@ import ru.yandex.backendschool.megamarket.dataEnum.ShopUnitType;
 import ru.yandex.backendschool.megamarket.dto.ShopUnitImport;
 import ru.yandex.backendschool.megamarket.exception.badRequest.ValidationError;
 
-import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Date;
 import java.util.regex.Pattern;
 
 @Component(value = "ValidatorImpl")
@@ -22,12 +21,12 @@ public class ShopUnitValidatorImpl implements ShopUnitValidator {
     }
 
     @Override
-    public Date validateDateAndGet(String dateString) {
+    public ZonedDateTime validateDateAndGet(String dateString) {
         if (dateString == null) throw new ValidationError();
 
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_ZONED_DATE_TIME;
         try {
-            return Date.from(Instant.from(formatter.parse(dateString)));
+            return ZonedDateTime.parse(dateString, formatter);
         } catch (DateTimeParseException exception) {
             throw new ValidationError();
         }
@@ -38,16 +37,16 @@ public class ShopUnitValidatorImpl implements ShopUnitValidator {
     @Override
     public void validateShopUnitImport(ShopUnitImport unitImport) {
 
-        if (unitImport.getId() == null ||
-                unitImport.getName() == null ||
-                unitImport.getType() == null
+        if (unitImport.id() == null ||
+                unitImport.name() == null ||
+                unitImport.type() == null
         ) throw new ValidationError();
 
-        if (isInvalidUuid(unitImport.getId())) throw new ValidationError();
-        if (unitImport.getParentId() != null && isInvalidUuid(unitImport.getParentId())) throw new ValidationError();
+        if (isInvalidUuid(unitImport.id())) throw new ValidationError();
+        if (unitImport.parentId() != null && isInvalidUuid(unitImport.parentId())) throw new ValidationError();
 
-        if (unitImport.getType() == ShopUnitType.CATEGORY && unitImport.getPrice() != null) throw new ValidationError();
-        if (unitImport.getType() == ShopUnitType.OFFER && unitImport.getPrice() == null) throw new ValidationError();
+        if (unitImport.type() == ShopUnitType.CATEGORY && unitImport.price() != null) throw new ValidationError();
+        if (unitImport.type() == ShopUnitType.OFFER && unitImport.price() == null) throw new ValidationError();
     }
 
 }

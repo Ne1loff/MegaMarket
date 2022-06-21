@@ -2,6 +2,7 @@ package ru.yandex.backendschool.megamarket.validator;
 
 import ru.yandex.backendschool.megamarket.dto.ShopUnitImport;
 
+import java.time.ZonedDateTime;
 import java.util.Date;
 
 public interface ShopUnitValidator {
@@ -10,5 +11,5 @@ public interface ShopUnitValidator {
 
     void validateShopUnitImport(ShopUnitImport unitImport);
 
-    Date validateDateAndGet(String dateString);
+    ZonedDateTime validateDateAndGet(String dateString);
 }

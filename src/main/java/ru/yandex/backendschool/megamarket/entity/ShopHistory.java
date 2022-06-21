@@ -8,7 +8,7 @@ import org.hibernate.Hibernate;
 import ru.yandex.backendschool.megamarket.dataEnum.ShopUnitType;
 
 import javax.persistence.*;
-import java.util.Date;
+import java.time.ZonedDateTime;
 import java.util.Objects;
 
 @Entity
@@ -18,28 +18,41 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class ShopHistory {
 
+    public ShopHistory(String shopUnitId, String name, ZonedDateTime date,
+                       String parentId, ShopUnitType type, Long price
+    ) {
+        this.id = -1L;
+        this.shopUnitId = shopUnitId;
+        this.name = name;
+        this.date = date;
+        this.parentId = parentId;
+        this.type = type;
+        this.price = price;
+        this.isDeleted = false;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id;
+    private Long id;
 
     @Column(nullable = false)
-    String shopUnitId;
+    private String shopUnitId;
 
     @Column(nullable = false)
-    String name;
+    private String name;
+
+    @Column(nullable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private ZonedDateTime date;
+
+    private String parentId;
 
     @Column(nullable = false)
-    Date date;
+    private ShopUnitType type;
 
-    String parentId;
-
-    @Column(nullable = false)
-    ShopUnitType type;
-
-    Long price;
+    private Long price;
 
     @Column(nullable = false)
-    Boolean isDeleted;
+    private Boolean isDeleted;
 
     @Override
     public boolean equals(Object o) {

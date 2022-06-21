@@ -5,13 +5,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.Hibernate;
-import org.hibernate.annotations.*;
+import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import ru.yandex.backendschool.megamarket.dataEnum.ShopUnitType;
 
 import javax.persistence.*;
-import javax.persistence.CascadeType;
-import javax.persistence.Entity;
-import java.util.Date;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -25,7 +25,7 @@ public class ShopUnit {
     public ShopUnit(
             String id,
             String name,
-            Date date,
+            ZonedDateTime date,
             String parentId,
             ShopUnitType type,
             Long price,
@@ -47,30 +47,38 @@ public class ShopUnit {
     }
 
     @Id
-    String id;
+    private String id;
 
-    String name;
+    @Column(nullable = false)
+    private String name;
 
-    Date date;
+    @Column(nullable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private ZonedDateTime date;
 
-    @Column(name = "pid")
-    String parentId;
+    private String parentId;
 
-    ShopUnitType type;
+    @Column(nullable = false)
+    private ShopUnitType type;
 
-    Long price;
+    private Long price;
 
-    String rootId;
+    private String rootId;
 
-    Long sumOfChildrenPrice;
+    @Column(nullable = false)
+    private Long sumOfChildrenPrice;
 
-    Long totalChildrenOfferCount;
+    @Column(nullable = false)
+    private Long totalChildrenOfferCount;
 
     @ToString.Exclude
     @BatchSize(size = 10)
     @NotFound(action = NotFoundAction.IGNORE)
     @OneToMany(mappedBy = "parentId", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.REFRESH})
-    List<ShopUnit> children;
+    private List<ShopUnit> children;
+
+    public boolean haveParentId() {
+        return parentId != null;
+    }
 
     @Override
     public boolean equals(Object o) {
