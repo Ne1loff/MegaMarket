@@ -78,20 +78,7 @@ public class ShopService {
         setUnitPrice(unit);
     }
 
-    private void updateNewUnits(Map<String, ShopUnit> unitsMap, ShopUnit parent, List<ShopUnit> values) {
-
-        if (parent.getType() == ShopUnitType.OFFER) throw new ValidationError();
-
-        values.forEach(it -> {
-            parent.getChildren().add(it);
-            it.setRootId(parent.getRootId());
-            it.setParentId(parent.getId());
-            unitsMap.put(it.getId(), it);
-        });
-    }
-
-    private List<ShopUnit> getAllUpdatedUnitsAndUpdateDate(Map<String, ShopUnit> unitsMap, List<ShopUnit> updatedUnits) {
-        var updatedDate = updatedUnits.get(0).getDate();
+    private List<ShopUnit> getAllUpdatedUnitsAndUpdateDate(Map<String, ShopUnit> unitsMap, Collection<ShopUnit> updatedUnits, ZonedDateTime updatedDate) {
         var allUpdatedUnits = new ArrayList<ShopUnit>();
         var parentIds = updatedUnits.stream()
                 .filter(ShopUnit::haveParentId)
@@ -112,190 +99,119 @@ public class ShopService {
         return allUpdatedUnits.stream().distinct().toList();
     }
 
+    private void addNewUnitsAndUpdateParents(Collection<ShopUnit> newUnits, Map<String, ShopUnit> unitsMap) {
+        var newUnitsGroupedByParentId = newUnits.stream()
+                .filter(ShopUnit::haveParentId)
+                .collect(Collectors.groupingBy(ShopUnit::getParentId));
+
+        newUnitsGroupedByParentId.forEach((parentId, values) -> {
+            var parent = Optional.ofNullable(unitsMap.get(parentId))
+                    .orElseThrow(ValidationError::new);
+            if (parent.isOffer()) throw new ValidationError();
+
+            parent.addAllToChild(values);
+            String rootId = parent.getRootId();
+
+            if (validator.isInvalidUuid(rootId)) {
+                var nextParent = parent;
+                while (nextParent.haveParentId()) {
+                    nextParent = Optional.ofNullable(unitsMap.get(nextParent.getParentId()))
+                            .orElseThrow(ValidationError::new);
+                    rootId = nextParent.getRootId();
+                }
+            }
+
+            for (var unit : values) {
+                unit.setRootId(rootId);
+            }
+        });
+    }
+
+    private void updateUnits(Collection<ShopUnitImport> updatedImports, Map<String, ShopUnit> unitsMap, ZonedDateTime updateTime) {
+        updatedImports.forEach(it -> {
+            var parent = Optional.ofNullable(unitsMap.get(it.parentId()))
+                    .orElseThrow(ValidationError::new);
+            if (parent.isOffer()) throw new ValidationError();
+            var unit = Optional.ofNullable(unitsMap.get(it.id()))
+                    .orElseThrow(ValidationError::new);
+
+            unit.setName(it.name());
+
+            if (Objects.equals(it.parentId(), unit.getParentId())) {
+                var oldParent = Optional.ofNullable(unitsMap.get(unit.getParentId()))
+                        .orElseThrow(ValidationError::new);
+                oldParent.removeFromChildren(unit);
+                parent.addToChild(unit);
+                unit.setRootId(parent.getRootId());
+            }
+
+            if (unit.isOffer()) {
+                unit.updatePrices(it.price());
+            }
+        });
+    }
+
     @Transactional
     void addOrUpdateShopUnits(
-            List<ShopUnit> newUnits, List<ShopUnitImport> importUnitsForUpdateUnits, ZonedDateTime updateTime
+            Collection<ShopUnit> newUnits, Collection<ShopUnit> unitsForUpdate, Collection<ShopUnitImport> updatedImports, ZonedDateTime updateTime
     ) {
-        var idsForUpdate = importUnitsForUpdateUnits.parallelStream()
-                .map(ShopUnitImport::id)
-                .toList();
+        var parentIds = Stream.concat(newUnits.stream(), unitsForUpdate.stream())
+                .map(ShopUnit::getParentId).collect(Collectors.toSet());
 
-        Map<String, List<ShopUnit>> unitsRootIdsMap = new HashMap<>();
-        if (!(idsForUpdate.isEmpty()))
-            unitsRootIdsMap = shopUnitsRepository.getShopUnitsByIds(idsForUpdate).stream()
-                    .collect(Collectors.groupingBy(ShopUnit::getRootId));
+        var rootIds = !parentIds.isEmpty() ?
+                shopUnitsRepository.getRootIdsByIds(parentIds) : new ArrayList<String>();
+        var allUnitsByRootIds = !rootIds.isEmpty() ?
+                shopUnitsRepository.getShopUnitsByRootIds(rootIds) : new ArrayList<ShopUnit>();
 
-        Set<ShopUnit> allUnitsForUpdate = new HashSet<>();
-        if (!(unitsRootIdsMap.keySet().isEmpty()))
-            allUnitsForUpdate = new HashSet<>(shopUnitsRepository.getShopUnitsByRootIds(unitsRootIdsMap.keySet()));
+        allUnitsByRootIds.addAll(newUnits);
 
-        var groupedNewUnits = newUnits.stream()
-                .collect(Collectors.groupingBy(ShopUnit::haveParentId));
-
-        boolean haveParent = true;
-
-        var parentIds = groupedNewUnits.getOrDefault(haveParent, Collections.emptyList()).stream()
-                .map(ShopUnit::getParentId)
-                .toList();
-
-        allUnitsForUpdate.addAll(unitsRootIdsMap.values()
-                .stream()
-                .flatMap(List::stream)
-                .toList()
-        );
-
-        if (groupedNewUnits.containsKey(!(haveParent)))
-            allUnitsForUpdate.addAll(groupedNewUnits.get(!(haveParent)));
-
-        var unitsMap = allUnitsForUpdate.stream()
+        var unitsMap = allUnitsByRootIds.stream()
                 .collect(Collectors.toMap(ShopUnit::getId, it -> it));
 
-        parentIds.stream().map(it -> newUnits.stream()
-                        .filter(unit -> unit.getId().equals(it)).findFirst()
-                        .orElseThrow(ValidationError::new)
-                )
-                .forEach(it -> unitsMap.put(it.getId(), it));
+        addNewUnitsAndUpdateParents(newUnits, unitsMap);
+        updateUnits(updatedImports, unitsMap, updateTime);
 
-        if (groupedNewUnits.containsKey(haveParent)) {
-            var groupedUnitsByType = groupedNewUnits.get(haveParent).stream()
-                    .collect(Collectors.groupingBy(ShopUnit::getType, Collectors.groupingBy(ShopUnit::getParentId)));
+        var units = unitsMap.values();
 
-            parentIds = groupedUnitsByType.values().stream()
-                    .map(Map::keySet)
-                    .flatMap(Collection::stream)
-                    .toList();
-
-            var parentsIdsForAdd = parentIds.stream()
-                    .filter(it -> !unitsMap.containsKey(it))
-                    .toList();
-
-            var rootIds = shopUnitsRepository.getRootIdsByIds(parentsIdsForAdd);
-            shopUnitsRepository.getShopUnitsByRootIds(rootIds)
-                    .forEach(it -> unitsMap.put(it.getId(), it));
-
-
-            groupedUnitsByType.getOrDefault(ShopUnitType.CATEGORY, Collections.emptyMap())
-                    .forEach((parentId, values) -> {
-                        var parent = Optional.ofNullable(unitsMap.get(parentId))
-                                .orElseThrow(ValidationError::new);
-                        updateNewUnits(unitsMap, parent, values);
-                    });
-
-            groupedUnitsByType.getOrDefault(ShopUnitType.OFFER, Collections.emptyMap())
-                    .forEach((parentId, values) -> {
-                        var parent = Optional.ofNullable(unitsMap.get(parentId))
-                                .orElseThrow(ValidationError::new);
-                        updateNewUnits(unitsMap, parent, values);
-
-                        var sumOfPrice = values.stream()
-                                .mapToLong(ShopUnit::getSumOfChildrenPrice)
-                                .sum();
-                        var totalCountOfUnits = values.size();
-
-                        parent.setSumOfChildrenPrice(parent.getSumOfChildrenPrice() + sumOfPrice);
-                        parent.setTotalChildrenOfferCount(parent.getTotalChildrenOfferCount() + totalCountOfUnits);
-
-                        shopUnitsRepository.saveAll(values);
-                    });
-
-        }
-
-        var importUnitsIsHaveParent = importUnitsForUpdateUnits.stream()
-                .collect(Collectors.groupingBy(ShopUnitImport::haveParentId));
-
-        importUnitsIsHaveParent.getOrDefault(haveParent, Collections.emptyList()).stream()
-                .collect(Collectors.groupingBy(ShopUnitImport::parentId))
-                .forEach((parentId, imports) -> {
-                    var parent = unitsMap.get(parentId);
-
-                    if (parent.getType() == ShopUnitType.OFFER) throw new ValidationError();
-
-                    imports.forEach(importUnit -> {
-                        var unit = unitsMap.get(importUnit.id());
-
-                        unit.setName(importUnit.name());
-                        unit.setDate(updateTime);
-
-                        boolean unitIsOffer = unit.getType() == ShopUnitType.OFFER;
-
-                        if (unitIsOffer) {
-                            parent.setSumOfChildrenPrice(parent.getSumOfChildrenPrice() - unit.getSumOfChildrenPrice());
-                            unit.setPrice(importUnit.price());
-                            unit.setSumOfChildrenPrice(unit.getPrice());
-                            parent.setSumOfChildrenPrice(parent.getSumOfChildrenPrice() + unit.getSumOfChildrenPrice());
-                        }
-
-                        unit.setRootId(parent.getRootId());
-
-                        if (!(Objects.equals(unit.getParentId(), parentId))) {
-                            var oldParent = unitsMap.get(unit.getParentId()); // 100% have parent
-
-                            oldParent.setTotalChildrenOfferCount(
-                                    oldParent.getTotalChildrenOfferCount() - unit.getTotalChildrenOfferCount());
-                            oldParent.setSumOfChildrenPrice(
-                                    oldParent.getSumOfChildrenPrice() - unit.getSumOfChildrenPrice());
-
-                            oldParent.getChildren().remove(unit);
-                            parent.getChildren().add(unit);
-                            unit.setParentId(parentId);
-                        }
-                    });
-                });
-
-        importUnitsIsHaveParent.getOrDefault(!haveParent, Collections.emptyList())
-                .forEach(it -> {
-                    var unit = unitsMap.get(it.id());
-
-                    unit.setName(it.name());
-
-                    if (!(Objects.equals(it.parentId(), unit.getParentId()))) {
-                        var oldParent = unitsMap.get(unit.getParentId());
-                        oldParent.getChildren().remove(unit);
-
-                        var sum = oldParent.getSumOfChildrenPrice();
-                        var count = oldParent.getTotalChildrenOfferCount();
-                        oldParent.setSumOfChildrenPrice(sum - unit.getSumOfChildrenPrice());
-                        oldParent.setTotalChildrenOfferCount(count - unit.getTotalChildrenOfferCount());
-                    }
-                });
-
-        unitsMap.values().stream()
-                .filter(it -> it.getParentId() == null)
+        units.stream()
+                .filter(it -> !it.haveParentId())
                 .forEach(this::updateRootPrice);
 
-        var updatedUnitsForStatistic = Stream.concat(newUnits.stream(),
-                importUnitsForUpdateUnits.stream().map(it -> unitsMap.get(it.id()))
+        var updatedUnitsForStatistic = Stream.concat(
+                newUnits.stream(), unitsForUpdate.stream()
         ).toList();
-
-        var allUpdatedUnits = getAllUpdatedUnitsAndUpdateDate(unitsMap, updatedUnitsForStatistic).stream()
+        var unitsForHistory = getAllUpdatedUnitsAndUpdateDate(
+                unitsMap, updatedUnitsForStatistic, updateTime
+        ).stream()
                 .map(mapper::mapToShopHistory).toList();
 
-        shopHistoryRepository.saveAll(allUpdatedUnits);
-        shopUnitsRepository.saveAll(unitsMap.values());
+        shopHistoryRepository.saveAll(unitsForHistory);
+        shopUnitsRepository.saveAll(units);
     }
 
     public void importProducts(ShopUnitImportRequest importRequest) {
-        var ids = shopUnitsRepository.getAllIds(); //TODO: Try to optimize
         var items = importRequest.items();
-
-        var updateTime = validator
-                .validateDateAndGet(importRequest.updateDate());
-
-
         items.forEach(validator::validateShopUnitImport);
+        var updateTime = validator.validateDateAndGet(importRequest.updateDate());
 
-        List<ShopUnit> newUnits = new ArrayList<>();
-        List<ShopUnitImport> importUnitsForUpdate = new ArrayList<>();
+        var ids = items.stream()
+                .map(ShopUnitImport::id).toList();
+        var unitsForUpdate = shopUnitsRepository.getShopUnitsByIds(ids).stream()
+                .collect(Collectors.toMap(ShopUnit::getId, it -> it));
+        var unitsIdForUpdate = unitsForUpdate.keySet();
 
-        items.forEach(it -> {
-            if (ids.contains(it.id())) {
-                importUnitsForUpdate.add(it);
+        var unitImportsUpdated = new ConcurrentLinkedQueue<ShopUnitImport>();
+        var newUnits = new ConcurrentLinkedQueue<ShopUnit>();
+
+        items.parallelStream().forEach(it -> {
+            if (unitsIdForUpdate.contains(it.id())) {
+                unitImportsUpdated.add(it);
             } else {
                 newUnits.add(mapper.mapToShopUnit(it, updateTime));
             }
         });
 
-        addOrUpdateShopUnits(newUnits, importUnitsForUpdate, updateTime);
+        addOrUpdateShopUnits(newUnits, unitsForUpdate.values(), unitImportsUpdated, updateTime);
     }
 
     public ShopUnitDto getShopUnitById(String id) {

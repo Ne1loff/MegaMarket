@@ -12,6 +12,7 @@ import ru.yandex.backendschool.megamarket.dataEnum.ShopUnitType;
 
 import javax.persistence.*;
 import java.time.ZonedDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -79,6 +80,39 @@ public class ShopUnit {
 
     public boolean haveParentId() {
         return parentId != null;
+    }
+
+    public boolean isOffer() {
+        return type == ShopUnitType.OFFER;
+    }
+
+    public boolean isCategory() {
+        return type == ShopUnitType.CATEGORY;
+    }
+
+    public void addToChild(ShopUnit unit) {
+        children.add(unit);
+    }
+
+    public void addAllToChild(Collection<ShopUnit> units) {
+        children.addAll(units);
+    }
+
+    public void removeFromChildren(ShopUnit unit) {
+        children.remove(unit);
+    }
+
+    public void plusSumOfChildrenPrice(Long price) {
+        sumOfChildrenPrice += price;
+    }
+
+    public void minusSumOfChildrenPrice(Long price) {
+        sumOfChildrenPrice -= price;
+    }
+
+    public void updatePrices(Long price) {
+        this.price = price;
+        this.sumOfChildrenPrice = price;
     }
 
     @Override
