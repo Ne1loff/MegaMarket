@@ -62,6 +62,7 @@ public class ShopUnit {
 
     private Long price;
 
+    @Column(nullable = false)
     private String rootId;
 
     @Column(nullable = false)

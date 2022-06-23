@@ -1,5 +1,6 @@
 package ru.yandex.backendschool.megamarket.service;
 
+import io.github.bucket4j.Bucket;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.backendschool.megamarket.dataEnum.ShopUnitType;
@@ -10,6 +11,7 @@ import ru.yandex.backendschool.megamarket.dto.ShopUnitStatisticResponse;
 import ru.yandex.backendschool.megamarket.entity.ShopUnit;
 import ru.yandex.backendschool.megamarket.exception.badRequest.ValidationError;
 import ru.yandex.backendschool.megamarket.exception.notFound.ItemNotFoundError;
+import ru.yandex.backendschool.megamarket.exception.tooManyRequest.TooManyRequestError;
 import ru.yandex.backendschool.megamarket.mapper.ShopUnitMapper;
 import ru.yandex.backendschool.megamarket.repository.ShopHistoryRepository;
 import ru.yandex.backendschool.megamarket.repository.ShopUnitsRepository;
@@ -132,6 +134,10 @@ public class ShopService {
 
         boolean haveParent = true;
 
+        var parentIds = groupedNewUnits.getOrDefault(haveParent, Collections.emptyList()).stream()
+                .map(ShopUnit::getParentId)
+                .toList();
+
         allUnitsForUpdate.addAll(unitsRootIdsMap.values()
                 .stream()
                 .flatMap(List::stream)
@@ -144,11 +150,17 @@ public class ShopService {
         var unitsMap = allUnitsForUpdate.stream()
                 .collect(Collectors.toMap(ShopUnit::getId, it -> it));
 
+        parentIds.stream().map(it -> newUnits.stream()
+                        .filter(unit -> unit.getId().equals(it)).findFirst()
+                        .orElseThrow(ValidationError::new)
+                )
+                .forEach(it -> unitsMap.put(it.getId(), it));
+
         if (groupedNewUnits.containsKey(haveParent)) {
             var groupedUnitsByType = groupedNewUnits.get(haveParent).stream()
                     .collect(Collectors.groupingBy(ShopUnit::getType, Collectors.groupingBy(ShopUnit::getParentId)));
 
-            var parentIds = groupedUnitsByType.values().stream()
+            parentIds = groupedUnitsByType.values().stream()
                     .map(Map::keySet)
                     .flatMap(Collection::stream)
                     .toList();
@@ -263,7 +275,7 @@ public class ShopService {
     }
 
     public void importProducts(ShopUnitImportRequest importRequest) {
-        var ids = shopUnitsRepository.getAllIds();
+        var ids = shopUnitsRepository.getAllIds(); //TODO: Try to optimize
         var items = importRequest.items();
 
         var updateTime = validator
@@ -292,7 +304,7 @@ public class ShopService {
     }
 
     @Transactional
-    public void deleteShopUnit(String id) {
+    public void deleteShopUnit(String id, Bucket limiter) {
         if (validator.isInvalidUuid(id)) throw new ValidationError();
         var shopUnit = shopUnitsRepository.getShopUnitById(id).orElseThrow(ItemNotFoundError::new);
 
@@ -325,8 +337,10 @@ public class ShopService {
             children.addAll(child.getChildren());
             idsForDelete.add(child.getId());
         }
-
-        shopUnitsRepository.deleteAllByIds(idsForDelete);
+        if (limiter.tryConsume(idsForDelete.size())) {
+            shopUnitsRepository.deleteAllByIds(idsForDelete);
+        }
+        throw new TooManyRequestError();
     }
 
     public ShopUnitStatisticResponse getLastOffersStatistic(String date) {

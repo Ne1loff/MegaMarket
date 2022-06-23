@@ -33,7 +33,6 @@ public class ShopUnitValidatorImpl implements ShopUnitValidator {
 
     }
 
-
     @Override
     public void validateShopUnitImport(ShopUnitImport unitImport) {
 

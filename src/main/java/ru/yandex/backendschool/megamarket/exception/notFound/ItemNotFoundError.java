@@ -2,13 +2,13 @@ package ru.yandex.backendschool.megamarket.exception.notFound;
 
 public class ItemNotFoundError extends NotFoundException {
 
-    private static String message = "Item not found";
+    private static final String MESSAGE = "Item not found";
 
     public ItemNotFoundError() {
-        super(message);
+        super(MESSAGE);
     }
 
     public ItemNotFoundError(Throwable cause) {
-        super(message, cause);
+        super(MESSAGE, cause);
     }
 }
