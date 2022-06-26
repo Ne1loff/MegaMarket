@@ -12,6 +12,7 @@ import ru.yandex.backendschool.megamarket.dataEnum.ShopUnitType;
 
 import javax.persistence.*;
 import java.time.ZonedDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
@@ -30,7 +31,7 @@ public class ShopUnit {
             ShopUnitType type,
             Long price,
             String rootId,
-            Long sumOfChildrenPrice,
+            Long sumOfChildrenPrices,
             Long totalChildrenOfferCount,
             List<ShopUnit> children
     ) {
@@ -41,7 +42,7 @@ public class ShopUnit {
         this.type = type;
         this.price = price;
         this.rootId = rootId;
-        this.sumOfChildrenPrice = sumOfChildrenPrice;
+        this.sumOfChildrenPrices = sumOfChildrenPrices;
         this.totalChildrenOfferCount = totalChildrenOfferCount;
         this.children = children;
     }
@@ -66,19 +67,64 @@ public class ShopUnit {
     private String rootId;
 
     @Column(nullable = false)
-    private Long sumOfChildrenPrice;
+    private Long sumOfChildrenPrices;
 
     @Column(nullable = false)
     private Long totalChildrenOfferCount;
 
     @ToString.Exclude
-    @BatchSize(size = 10)
+    @BatchSize(size = 50)
     @NotFound(action = NotFoundAction.IGNORE)
     @OneToMany(mappedBy = "parentId", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.REFRESH})
     private List<ShopUnit> children;
 
     public boolean haveParentId() {
         return parentId != null;
+    }
+
+    public boolean isOffer() {
+        return type == ShopUnitType.OFFER;
+    }
+
+    public boolean isCategory() {
+        return type == ShopUnitType.CATEGORY;
+    }
+
+    public void addToChild(ShopUnit unit) {
+        children.add(unit);
+    }
+
+    public void addAllToChild(Collection<ShopUnit> units) {
+        children.addAll(units);
+    }
+
+    public void removeFromChildren(ShopUnit unit) {
+        children.remove(unit);
+    }
+
+    public ShopUnit plusSumOfChildrenPrice(Long price) {
+        sumOfChildrenPrices += price;
+        return this;
+    }
+
+    public ShopUnit minusSumOfChildrenPrice(Long price) {
+        sumOfChildrenPrices -= price;
+        return this;
+    }
+
+    public ShopUnit plusTotalChildrenOfferCount(Long count) {
+        totalChildrenOfferCount += count;
+        return this;
+    }
+
+    public ShopUnit minusTotalChildrenOfferCount(Long count) {
+        totalChildrenOfferCount -= count;
+        return this;
+    }
+
+    public void updatePrices(Long price) {
+        this.price = price;
+        this.sumOfChildrenPrices = price;
     }
 
     @Override

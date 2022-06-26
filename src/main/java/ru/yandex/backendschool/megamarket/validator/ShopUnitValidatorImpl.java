@@ -30,7 +30,6 @@ public class ShopUnitValidatorImpl implements ShopUnitValidator {
         } catch (DateTimeParseException exception) {
             throw new ValidationError();
         }
-
     }
 
     @Override

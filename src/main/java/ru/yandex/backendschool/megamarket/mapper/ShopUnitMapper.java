@@ -7,10 +7,10 @@ import ru.yandex.backendschool.megamarket.entity.ShopHistory;
 import ru.yandex.backendschool.megamarket.entity.ShopUnit;
 
 import java.time.ZonedDateTime;
-import java.util.Date;
 
 public interface ShopUnitMapper {
 
+    String mapDateToString(ZonedDateTime date);
     ShopUnit mapToShopUnit(ShopUnitImport unitImport, ZonedDateTime date);
     ShopUnitDto mapToShopUnitDto(ShopUnit unit);
     ShopHistory mapToShopHistory(ShopUnit unit);
