@@ -15,6 +15,13 @@ import java.util.ArrayList;
 
 @Component(value = "MapperImpl")
 public class ShopUnitMapperImpl implements ShopUnitMapper {
+
+    @Override
+    public String mapDateToString(ZonedDateTime date) {
+        return date.withZoneSameInstant(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSVV"));
+    }
+
     @Override
     public ShopUnit mapToShopUnit(ShopUnitImport unitImport, ZonedDateTime date) {
         boolean unitIsOffer = unitImport.type() == ShopUnitType.OFFER;
@@ -39,8 +46,7 @@ public class ShopUnitMapperImpl implements ShopUnitMapper {
         if (unit == null) return null;
         var isOffer = unit.getType() == ShopUnitType.OFFER;
 
-        var dateString = unit.getDate().withZoneSameInstant(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSVV"));
+        var dateString = mapDateToString(unit.getDate());
 
         return new ShopUnitDto(
                 unit.getId(),
@@ -68,13 +74,14 @@ public class ShopUnitMapperImpl implements ShopUnitMapper {
 
     @Override
     public ShopUnitStatisticUnit mapToShopUnitStatisticUnit(ShopHistory shopHistory) {
+        var dateString = mapDateToString(shopHistory.getDate());
         return new ShopUnitStatisticUnit(
                 shopHistory.getShopUnitId(),
                 shopHistory.getName(),
                 shopHistory.getParentId(),
                 shopHistory.getType(),
                 shopHistory.getPrice(),
-                shopHistory.getDate()
+                dateString
         );
     }
 }

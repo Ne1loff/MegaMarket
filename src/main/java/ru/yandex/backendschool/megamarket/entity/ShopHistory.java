@@ -32,7 +32,10 @@ public class ShopHistory {
     }
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @SequenceGenerator(name = "history_seq",
+            sequenceName = "history_sequence",
+            allocationSize = 20)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "history_seq")
     private Long id;
 
     @Column(nullable = false)

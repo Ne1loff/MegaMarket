@@ -31,7 +31,7 @@ public class ShopUnit {
             ShopUnitType type,
             Long price,
             String rootId,
-            Long sumOfChildrenPrice,
+            Long sumOfChildrenPrices,
             Long totalChildrenOfferCount,
             List<ShopUnit> children
     ) {
@@ -42,7 +42,7 @@ public class ShopUnit {
         this.type = type;
         this.price = price;
         this.rootId = rootId;
-        this.sumOfChildrenPrice = sumOfChildrenPrice;
+        this.sumOfChildrenPrices = sumOfChildrenPrices;
         this.totalChildrenOfferCount = totalChildrenOfferCount;
         this.children = children;
     }
@@ -67,13 +67,13 @@ public class ShopUnit {
     private String rootId;
 
     @Column(nullable = false)
-    private Long sumOfChildrenPrice;
+    private Long sumOfChildrenPrices;
 
     @Column(nullable = false)
     private Long totalChildrenOfferCount;
 
     @ToString.Exclude
-    @BatchSize(size = 10)
+    @BatchSize(size = 50)
     @NotFound(action = NotFoundAction.IGNORE)
     @OneToMany(mappedBy = "parentId", fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.REFRESH})
     private List<ShopUnit> children;
@@ -102,17 +102,29 @@ public class ShopUnit {
         children.remove(unit);
     }
 
-    public void plusSumOfChildrenPrice(Long price) {
-        sumOfChildrenPrice += price;
+    public ShopUnit plusSumOfChildrenPrice(Long price) {
+        sumOfChildrenPrices += price;
+        return this;
     }
 
-    public void minusSumOfChildrenPrice(Long price) {
-        sumOfChildrenPrice -= price;
+    public ShopUnit minusSumOfChildrenPrice(Long price) {
+        sumOfChildrenPrices -= price;
+        return this;
+    }
+
+    public ShopUnit plusTotalChildrenOfferCount(Long count) {
+        totalChildrenOfferCount += count;
+        return this;
+    }
+
+    public ShopUnit minusTotalChildrenOfferCount(Long count) {
+        totalChildrenOfferCount -= count;
+        return this;
     }
 
     public void updatePrices(Long price) {
         this.price = price;
-        this.sumOfChildrenPrice = price;
+        this.sumOfChildrenPrices = price;
     }
 
     @Override
