@@ -7,7 +7,7 @@ paths:
   /imports:
     post:
       tags:
-        - Базовые задачи
+        - Обработчики
       description: |
         Импортирует новые товары и/или категории. Товары/категории импортированные повторно обновляют текущие. Изменение типа элемента с товара на категорию или с категории на товар не допускается. Порядок элементов в запросе является произвольным.
 
@@ -45,10 +45,23 @@ paths:
                       "code": 400,
                       "message": "Validation Failed"
                     }
+        "429":
+          description: Превышенно количество элементов для импорта или удаления данных
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                response:
+                  value: |-
+                    {
+                      "code": 429,
+                      "message": "Too many request"
+                    }
   /delete/{id}:
     delete:
       tags:
-        - Базовые задачи
+        - Обработчики
       description: |
         Удалить элемент по идентификатору. При удалении категории удаляются все дочерние элементы. Доступ к статистике (истории обновлений) удаленного элемента невозможен.
 
@@ -93,10 +106,23 @@ paths:
                       "code": 404,
                       "message": "Item not found"
                     }
+        "429":
+          description: Превышенно количество элементов для импорта или удаления данных
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                response:
+                  value: |-
+                    {
+                      "code": 429,
+                      "message": "Too many request"
+                    }
   /nodes/{id}:
     get:
       tags:
-        - Базовые задачи
+        - Обработчики
       description: |
         Получить информацию об элементе по идентификатору. При получении информации о категории также предоставляется информация о её дочерних элементах.
 
@@ -117,7 +143,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ShopUnit"
+                $ref: "#/components/schemas/ShopUnitDto"
         "400":
           description: Невалидная схема документа или входные данные не верны.
           content:
@@ -144,10 +170,23 @@ paths:
                       "code": 404,
                       "message": "Item not found"
                     }
+        "429":
+          description: Превышенно количество запросов к статистике
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                response:
+                  value: |-
+                    {
+                      "code": 429,
+                      "message": "Too many request"
+                    }
   /sales:
     get:
       tags:
-        - Дополнительные задачи
+        - Обработчики
       description: |
         Получение списка **товаров**, цена которых была обновлена за последние 24 часа включительно [now() - 24h, now()] от времени переданном в запросе. Обновление цены не означает её изменение. Обновления цен удаленных товаров недоступны. При обновлении цены товара, средняя цена категории, которая содержит этот товар, тоже обновляется.
       parameters:
@@ -179,10 +218,23 @@ paths:
                       "code": 400,
                       "message": "Validation Failed"
                     }
+        "429":
+          description: Превышенно количество запросов к статистике
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                response:
+                  value: |-
+                    {
+                      "code": 429,
+                      "message": "Too many request"
+                    }
   /node/{id}/statistic:
     get:
       tags:
-        - Дополнительные задачи
+        - Обработчики
       description: |
         Получение статистики (истории обновлений) по товару/категории за заданный полуинтервал [from, to). Статистика по удаленным элементам недоступна.
 
@@ -246,6 +298,19 @@ paths:
                       "code": 404,
                       "message": "Item not found"
                     }
+        "429":
+          description: Превышенно количество запросов к статистике
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                response:
+                  value: |-
+                    {
+                      "code": 429,
+                      "message": "Too many request"
+                    }
 components:
   schemas:
     ShopUnitType:
@@ -255,6 +320,153 @@ components:
         - OFFER
         - CATEGORY
     ShopUnit:
+      type: object
+      required:
+        - id
+        - name
+        - date
+        - type
+        - rootId
+        - sumOfChildrenPrices
+        - totalChildrenOfferCount
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: false
+          description: Уникальный идентфикатор
+          example: "3fa85f64-5717-4562-b3fc-2c963f66a333"
+        name:
+          description: Имя категории
+          type: string
+          nullable: false
+        date:
+          type: string
+          format: date-time
+          nullable: false
+          description: Время последнего обновления элемента.
+          example: "2022-05-28T21:12:01.000Z"
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID родительской категории
+          example: "3fa85f64-5717-4562-b3fc-2c963f66a333"
+        type:
+          $ref: '#/components/schemas/ShopUnitType'
+        price:
+          description: Целое число, для категории - это средняя цена всех дочерних товаров(включая товары подкатегорий). Если цена является не целым числом, округляется в меньшую сторону до целого числа. Если категория не содержит товаров цена равна null.
+          type: integer
+          nullable: true
+          format: int64
+        rootId:
+          type: string
+          format: uuid
+          nullable: false
+          description: UUID корневой категории
+          example: "3fa85f64-5717-4562-b3fc-2c963f66a333"
+        sumOfChildrenPrices:
+          description: Целое число, сумма цен дочерних товаров (включая товары подкатегорий). Для товаров - это их цена.
+          type: integer
+          nullable: false
+          format: int64
+          example: 15000
+        totalChildrenOfferCount:
+          description: Целое число, количество дочерних товаров (включая товары подкатегорий). Для товаров - 1.
+          type: integer
+          nullable: false
+          format: int64
+          example: 4
+        children:
+          description: Список всех дочерних товаров\категорий. Для товаров поле равно null.
+          type: array
+          items:
+            $ref: "#/components/schemas/ShopUnit"
+      example:
+        id: "3fa85f64-5717-4562-b3fc-2c963f66a111"
+        name: Категория
+        type: CATEGORY
+        parentId: null
+        date: "2022-05-28T21:12:01.000Z"
+        price: 6
+        rootId: "3fa85f64-5717-4562-b3fc-2c963f66a111"
+        sumOfChildrenPrices: 12
+        totalChildrenOfferCount: 2
+        children:
+          - name: Оффер 1
+            id: "3fa85f64-5717-4562-b3fc-2c963f66a222"
+            price: 4
+            date: "2022-05-28T21:12:01.000Z"
+            type: OFFER
+            parentId: "3fa85f64-5717-4562-b3fc-2c963f66a111"
+            rootId: "3fa85f64-5717-4562-b3fc-2c963f66a111"
+            sumOfChildrenPrices: 4
+            totalChildrenOfferCount: 1
+          - name: Подкатегория
+            type: CATEGORY
+            id: "3fa85f64-5717-4562-b3fc-2c963f66a333"
+            date: "2022-05-26T21:12:01.000Z"
+            parentId: "3fa85f64-5717-4562-b3fc-2c963f66a111"
+            price: 8
+            rootId: "3fa85f64-5717-4562-b3fc-2c963f66a111"
+            sumOfChildrenPrices: 8
+            totalChildrenOfferCount: 1
+            children:
+              - name: Оффер 2
+                id: "3fa85f64-5717-4562-b3fc-2c963f66a444"
+                parentId: "3fa85f64-5717-4562-b3fc-2c963f66a333"
+                date: "2022-05-26T21:12:01.000Z"
+                price: 8
+                type: OFFER
+                rootId: "3fa85f64-5717-4562-b3fc-2c963f66a111"
+                sumOfChildrenPrices: 8
+                totalChildrenOfferCount: 1
+    ShopHistory:
+      type: object
+      required:
+        - id
+        - shopUnitId
+        - name
+        - date
+        - type
+        - isDeleted
+      properties:
+        id:
+          type: integer
+          format: int64
+          nullable: false
+          description: Уникальный идентфикатор
+        shopUnitId:
+          type: string
+          format: UUID
+          nullable: false
+          description: Идентфикатор объекта ShopUnit
+        name:
+          type: string
+          nullable: false
+          description: Имя объекта ShopUnit
+        date:
+          type: string
+          format: date-time
+          nullable: false
+          description: Дата обновления объекта ShopUnit
+        parentId:
+          type: string
+          format: UUID
+          nullable: true
+          description: UUID родительской категории объекта ShopUnit
+        type:
+          $ref: '#/components/schemas/ShopUnitType'
+        price:
+          type: integer
+          format: int64
+          nullable: true
+          description: Цена объекта ShopUnit
+        isDeleted:
+          type: boolean
+          nullable: false
+          description: Флаг указывающий на то, что даный ShopUnit удален
+    ShopUnitDto:
       type: object
       required:
         - id
@@ -276,7 +488,7 @@ components:
           type: string
           format: date-time
           nullable: false
-          description: Время последнего обновления элемента. 
+          description: Время последнего обновления элемента.
           example: "2022-05-28T21:12:01.000Z"
         parentId:
           type: string
@@ -295,34 +507,7 @@ components:
           description: Список всех дочерних товаров\категорий. Для товаров поле равно null.
           type: array
           items:
-            $ref: "#/components/schemas/ShopUnit"
-      example:
-        id: "3fa85f64-5717-4562-b3fc-2c963f66a111"
-        name: Категория
-        type: CATEGORY
-        parentId: null
-        date: "2022-05-28T21:12:01.000Z"
-        price: 6
-        children:
-          - name: Оффер 1
-            id: "3fa85f64-5717-4562-b3fc-2c963f66a222"
-            price: 4
-            date: "2022-05-28T21:12:01.000Z"
-            type: OFFER
-            parentId: "3fa85f64-5717-4562-b3fc-2c963f66a111"
-          - name: Подкатегория
-            type: CATEGORY
-            id: "3fa85f64-5717-4562-b3fc-2c963f66a333"
-            date: "2022-05-26T21:12:01.000Z"
-            parentId: "3fa85f64-5717-4562-b3fc-2c963f66a111"
-            price: 8
-            children:
-              - name: Оффер 2
-                id: "3fa85f64-5717-4562-b3fc-2c963f66a444"
-                parentId: "3fa85f64-5717-4562-b3fc-2c963f66a333"
-                date: "2022-05-26T21:12:01.000Z"
-                price: 8
-                type: OFFER
+            $ref: "#/components/schemas/ShopUnitDto"
     ShopUnitImport:
       type: object
       required:

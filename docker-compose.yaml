@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+  backend:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: mega_market_backend
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    restart: always
+  db:
+    image: postgres:14.3-alpine
+    container_name: mega_market_db
+    environment:
+      POSTGRES_DB: "megamarket"
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "m3gamark3t"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - .:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
